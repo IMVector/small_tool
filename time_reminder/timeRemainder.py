@@ -1,7 +1,7 @@
 import sys
 from datetime import *
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QGridLayout, QWidget, QProgressBar, QHBoxLayout, QVBoxLayout, QAction, QMenu, QSystemTrayIcon, qApp, QComboBox
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QObject, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QThread, QObject, QTimer, QByteArray, QBuffer
 from PyQt5.QtGui import QCursor, QIcon
 
 StyleSheet = '''
@@ -85,7 +85,8 @@ class MainWindow(QMainWindow):
 
         wid = QWidget(self)
         # self.setWindowFlags(Qt.WindowStaysOnTopHint)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)  # 保持窗口在最顶端，不显示最大化最小化和关闭按钮，不在任务栏显示
+        # 保持窗口在最顶端，不显示最大化最小化和关闭按钮，不在任务栏显示
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         #  | Qt.Tool   #不显示任务栏按钮
         self.setCentralWidget(wid)  # 主窗口不加QWidget无法添加布局
 
@@ -142,6 +143,8 @@ class MainWindow(QMainWindow):
         self.init()
 
         # -------------------通知区域图标右键菜单start------------------
+        self.copyAction = QAction(u"剪切板图像", self,
+                                      triggered=self.copyImage)
         self.minimizeAction = QAction(u"最小化", self,
                                       triggered=self.hide)
         self.restoreAction = QAction(u"&显示窗口", self,
@@ -152,6 +155,7 @@ class MainWindow(QMainWindow):
                                   triggered=lambda: sys.exit(app.exec_()))
         # 弹出的菜单的行为，包括退出，还原，最小化
         self.trayIconMenu = QMenu(self)
+        self.trayIconMenu.addAction(self.copyAction)
         self.trayIconMenu.addAction(self.restoreAction)
         self.trayIconMenu.addAction(self.minimizeAction)
         self.trayIconMenu.addAction(self.quitAction)
@@ -249,6 +253,22 @@ class MainWindow(QMainWindow):
         # 重写鼠标事件
         self.m_flag = False
         self.setCursor(QCursor(Qt.ArrowCursor))
+
+    def copyImage(self):
+        data = QApplication.clipboard().mimeData()
+        if data.hasImage():
+            image = data.imageData()
+            # 获取一个空的字节数组
+            byte_array = QByteArray()
+            # 将字节数组绑定到输出流上
+            buffer = QBuffer(byte_array)
+            # 将数据使用png格式进行保存
+            image.save(buffer, "png", quality=100)
+            base64Str = str(byte_array.toBase64())
+            # 转化成markdowm可以显示的内容
+            base64Str = ":data:image/jpeg;base64,"+base64Str[2:-1]
+            clipboard = QApplication.clipboard()
+            clipboard.setText(base64Str)
 
 
 app = QApplication(sys.argv)  # 启动主程序
